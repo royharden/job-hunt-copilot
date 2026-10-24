@@ -84,6 +84,17 @@ describe("evidence proposals", () => {
     expect(next.find((item) => item.requirementId === reactReq.requirementId)!.confirmed).not.toBeNull();
   });
 
+  // what_bug_this_catches: un-reviewing a confirmed clause keeping its confirmation (live save rejected,
+  // demo accepted).
+  it("drops a confirmation when its requirement is no longer reviewed", () => {
+    const profile = repairedProfile();
+    const { requirements, evidence } = reviewedJourney(profile);
+    const react = requirements.find((req) => req.clause === "Strong React experience")!;
+    const unreviewed = requirements.map((req) => (req.requirementId === react.requirementId ? { ...req, reviewed: false } : req));
+    const next = proposeEvidence(unreviewed, profile, evidence);
+    expect(next.find((item) => item.requirementId === react.requirementId)!.confirmed).toBeNull();
+  });
+
   it("warns that years are not proven by a match", () => {
     const { requirements } = reviewedJourney();
     const years = requirements.find((req) => req.flags.includes("years"))!;

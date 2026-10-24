@@ -66,8 +66,9 @@ export function proposedTier(proposals: EvidenceProposal[]): ProposalTier {
 }
 
 // Fresh proposals for every retained requirement. Prior confirmations are kept only when the requirement
-// version and every confirmed fact version are unchanged and still current; otherwise they are dropped and
-// the requirement needs confirmation again.
+// version is unchanged and still reviewed and every confirmed fact version is still current; otherwise they
+// are dropped and the requirement needs confirmation again (the database refuses confirmations on
+// unreviewed requirements, so both adapters must drop them the same way).
 export function proposeEvidence(
   requirements: RequirementVersion[],
   profile: Profile,
@@ -81,6 +82,7 @@ export function proposeEvidence(
       const prior = previous.find((item) => item.requirementId === requirement.requirementId);
       const keep =
         prior?.confirmed &&
+        requirement.reviewed &&
         prior.requirementVersionId === requirement.versionId &&
         prior.confirmed.facts.every((ref) => current.has(ref.versionId));
       return {

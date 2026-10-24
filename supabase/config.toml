@@ -1,4 +1,8 @@
 project_id = "job-hunt-copilot"
 
-[functions.draft-materials]
+# Authenticated validation/approval/export. No model call. The gateway verifies the JWT; the handler
+# verifies it again with auth.getUser and checks ownership before the service-only commit.
+[functions.draft-approve]
 verify_jwt = true
+
+# Optional M6 rewording (draft-materials) is NOT built in the MVP and has no entry here.

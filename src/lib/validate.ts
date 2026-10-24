@@ -88,7 +88,8 @@ export function cleanRequirementEdits(edits: RequirementEdit[]): RequirementEdit
 export function cleanDecision(decision: EvidenceDecision | null): EvidenceDecision | null {
   if (decision === null) return null;
   const tier = oneOf(decision.tier, CONFIRMED_TIERS, "confirmation");
-  const facts = Array.isArray(decision.facts) ? decision.facts : [];
+  const all = Array.isArray(decision.facts) ? decision.facts : [];
+  const facts = all.filter((ref, index) => all.findIndex((other) => other.versionId === ref.versionId) === index);
   if (tier === "gap" && facts.length > 0) fail("A gap has no evidence.");
   if (tier !== "gap" && facts.length === 0) fail("Pick the approved sentence that supports this requirement.");
   if (facts.length > 8) fail("Too many sentences for one requirement.");

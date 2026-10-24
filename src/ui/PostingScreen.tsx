@@ -342,7 +342,8 @@ function EvidenceReview(props: SectionProps) {
       <CoverageView title="Profile evidence coverage" coverage={coverage} />
       <ul className="list">
         {retained.map((requirement) => {
-          const item = mapping.evidence.find((entry) => entry.requirementId === requirement.requirementId);
+          // Show the live view so a confirmation citing a no-longer-current statement is not displayed as counted.
+          const item = liveEvidence.find((entry) => entry.requirementId === requirement.requirementId);
           return (
             <li key={requirement.requirementId} className="card stack">
               <EvidenceRow

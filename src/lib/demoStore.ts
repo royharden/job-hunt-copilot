@@ -133,8 +133,11 @@ export function createDemoStore(): HuntRepository {
     return new Date(value).toISOString();
   };
 
+  // Without browser storage the demo still works for this page view, from memory only.
+  let memory: DemoState | null = null;
+
   function read(): DemoState {
-    if (!store) return freshState();
+    if (!store) return (memory ??= freshState());
     const raw = store.getItem(DEMO_STORAGE_KEY);
     if (raw === null) {
       const state = freshState();
@@ -157,6 +160,7 @@ export function createDemoStore(): HuntRepository {
 
   function commit(next: DemoState) {
     state = next;
+    memory = next;
     if (store) store.setItem(DEMO_STORAGE_KEY, JSON.stringify(next));
   }
 
