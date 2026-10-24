@@ -118,3 +118,41 @@ th, td { text-align: left; vertical-align: top; padding: 0.35rem; border-bottom:
 @media (max-width: 800px) {
   .board { grid-template-columns: 1fr; }
 }
+
+/* S15-INT additions: grades, banners, inspector, board cards */
+.banner { background: #fff4d6; border: 1px solid #e8d49a; border-radius: 8px; padding: 0.5rem 0.75rem; margin-top: 0.8rem; }
+.banner.live { background: #e7f2ec; border-color: #b9d9c8; }
+button.link { background: none; border: 0; padding: 0; color: #0f6b4c; text-decoration: underline; }
+button.danger { background: #8f2a20; }
+label.inline { display: flex; gap: 0.35rem; align-items: center; }
+.tag-verified, .tag-direct, .tag-exact { background: #d9efe4; }
+.tag-partial, .tag-lexical { background: #e3e8f6; }
+.tag-unchecked, .tag-reverted { background: #f6e7c8; }
+.tag-blocked { background: #f4d6d2; }
+.tag-checked { background: #e6dcf3; }
+.cap-local { background: #d9efe4; }
+.cap-rehearsed { background: #f6e7c8; }
+.cap-unavailable { background: #ece6da; }
+tr.removed td { opacity: 0.55; text-decoration: line-through; }
+td.quote { max-width: 18rem; color: #5e574c; }
+td input { width: 100%; }
+.warnings { margin: 0; padding-left: 1.1rem; color: #6d4a12; font-size: 0.9rem; }
+.packet { list-style: decimal; padding-left: 1.4rem; }
+.grade-blocked, .grade-reverted { border-left: 4px solid #b5463a; }
+.grade-unchecked { border-left: 4px solid #c99a2e; }
+.grade-verified { border-left: 4px solid #0f6b4c; }
+.proposal { text-decoration: line-through; color: #6d221c; }
+.inspector { background: #f7f3ea; border-radius: 6px; padding: 0.6rem; font-size: 0.92rem; }
+.source-quote { background: #fff4d6; }
+pre.export, pre.reply { white-space: pre-wrap; background: #fff; border: 1px solid #e2d9c8; border-radius: 6px; padding: 0.6rem; margin: 0; font-family: inherit; }
+mark { background: #d9efe4; }
+mark.ignored { background: #ece6da; text-decoration: line-through; }
+.board-card { display: grid; gap: 0.25rem; width: 100%; text-align: left; color: inherit; cursor: pointer; }
+.board-card.selected { outline: 2px solid #0f6b4c; }
+.board { grid-template-columns: repeat(7, minmax(150px, 1fr)); }
+fieldset { border: 1px solid #e2d9c8; border-radius: 6px; }
+@media (max-width: 800px) {
+  .board { grid-template-columns: 1fr; }
+  table { display: block; overflow-x: auto; }
+}
+.cap-server { background: #e3e8f6; }

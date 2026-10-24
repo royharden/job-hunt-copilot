@@ -1,114 +1,134 @@
+import type { StageChangeRequest, StageChangeResult } from "../../supabase/functions/_shared/provenance/board.ts";
+import type { RepairAction } from "../../supabase/functions/_shared/provenance/health.ts";
 import type {
-  BoardStatus,
-  CoverLine,
-  DraftBullet,
-  DraftSource,
-  Fact,
+  Application,
+  Approval,
+  ConfirmedTier,
+  EvidenceMapping,
   FactKind,
-  GateReport,
-  PostingKind,
-  ReplyLabel,
-  RequirementMatch,
+  FactRef,
+  PacketLine,
+  PacketRevision,
+  PostingVersion,
+  Profile,
+  RenderedLine,
+  Reply,
+  RequirementSet,
+  RequirementVersion,
+  RoleRef,
+  StageEvent,
+  UsageInterval,
 } from "../../supabase/functions/_shared/provenance/types.ts";
 
-export interface FactRecord extends Fact {
-  createdAt: string;
+// One typed API for both adapters. The demo adapter runs everything locally in browser storage; the remote
+// adapter calls owner-checked database RPCs and the draft-approve function. Neither adapter lets the client
+// write grades, approvals, stage/revision, confirmed replies or events directly.
+
+export interface Workspace {
+  profile: Profile;
+  postings: PostingVersion[];
+  requirementSets: RequirementSet[];
+  mappings: EvidenceMapping[];
+  applications: Application[];
+  packets: PacketRevision[];
+  approvals: Approval[];
+  replies: Reply[];
+  events: StageEvent[];
 }
 
-export interface PostingRecord {
-  id: string;
-  kind: PostingKind;
+export interface NewRole {
+  roleId: string | null; // null creates a new role; otherwise a new version of that role
+  employer: string;
   title: string;
-  organization: string;
-  text: string;
-  createdAt: string;
+  start: string;
+  end: string | null;
+  current: boolean;
+  asOf: string;
 }
 
-export interface DraftRecord {
-  id: string;
-  postingId: string;
-  source: DraftSource;
-  model: string | null;
-  bullets: DraftBullet[];
-  cover: CoverLine[];
-  gate: GateReport;
-  approvable: boolean;
-  approvedAt: string | null;
-  createdAt: string;
-}
-
-export interface ApplicationRecord {
-  id: string;
-  postingId: string;
-  draftId: string | null;
-  boardStatus: BoardStatus;
-  updatedAt: string;
-}
-
-export interface ReplyRecord {
-  id: string;
-  applicationId: string;
-  text: string;
-  predictedLabel: ReplyLabel;
-  confidence: number;
-  needsReview: boolean;
-  confirmedLabel: ReplyLabel | null;
-  createdAt: string;
-}
+export type NewFactOrigin =
+  | { type: "source_span"; documentId: string; documentVersionId: string; start: number; end: number }
+  | { type: "user_attestation"; statement: string };
 
 export interface NewFact {
+  factId: string | null; // null creates a new fact; otherwise a new draft version of that fact
   kind: FactKind;
-  surface: string;
   text: string;
+  roleRef: RoleRef | null;
+  projectLabel: string | null;
+  origin: NewFactOrigin;
 }
 
 export interface NewPosting {
-  kind: PostingKind;
+  organisation: string;
   title: string;
-  organization: string;
-  text: string;
+  body: string;
+  url: string | null;
 }
 
-export interface NewDraft {
-  postingId: string;
-  source: DraftSource;
-  model: string | null;
-  bullets: DraftBullet[];
-  cover: CoverLine[];
-  gate: GateReport;
-  approvable: boolean;
+export interface RequirementEdit {
+  requirementId: string | null; // null for a user-split or user-added clause
+  quote: RequirementVersion["quote"];
+  clause: string;
+  priority: RequirementVersion["priority"];
+  flags: RequirementVersion["flags"];
+  reviewed: boolean;
+  removed: boolean;
 }
 
-export interface NewReply {
-  applicationId: string;
-  text: string;
-  predictedLabel: ReplyLabel;
-  confidence: number;
-  needsReview: boolean;
+export interface EvidenceDecision {
+  tier: ConfirmedTier;
+  facts: FactRef[];
+  reason: string;
 }
 
-export type ModelDraftResult =
-  | { ok: true; draft: DraftRecord }
-  | { ok: false; message: string };
+export interface ApproveResult {
+  approval: Approval;
+  lines: RenderedLine[];
+  export: { plainText: string; markdown: string };
+  receipt: "server" | "demo_local";
+}
+
+export type RepoErrorCode = "unauthorized" | "forbidden" | "invalid_input" | "missing_config" | "blocked" | "conflict" | "stale" | "unavailable";
+
+export class RepoError extends Error {
+  readonly code: RepoErrorCode;
+  constructor(code: RepoErrorCode, message: string) {
+    super(message);
+    this.code = code;
+  }
+}
 
 export interface HuntRepository {
   mode: "demo" | "remote";
-  listFacts(): Promise<FactRecord[]>;
-  createFact(input: NewFact): Promise<FactRecord>;
-  deleteFact(id: string): Promise<void>;
-  loadSampleFacts(): Promise<void>;
-  removeSampleFacts(): Promise<void>;
-  listPostings(): Promise<PostingRecord[]>;
-  createPosting(input: NewPosting): Promise<PostingRecord>;
-  listMatches(postingId: string): Promise<RequirementMatch[]>;
-  replaceMatches(postingId: string, matches: RequirementMatch[]): Promise<void>;
-  listDrafts(postingId: string): Promise<DraftRecord[]>;
-  saveDraft(input: NewDraft): Promise<DraftRecord>;
-  approveDraft(id: string): Promise<void>;
-  listApplications(): Promise<ApplicationRecord[]>;
-  setBoardStatus(id: string, status: BoardStatus): Promise<void>;
-  listReplies(applicationId: string): Promise<ReplyRecord[]>;
-  saveReply(input: NewReply): Promise<ReplyRecord>;
-  confirmReply(id: string, label: ReplyLabel): Promise<void>;
-  requestModelDraft(postingId: string): Promise<ModelDraftResult>;
+  load(): Promise<Workspace>;
+
+  addSource(title: string, body: string): Promise<void>;
+  saveRole(input: NewRole): Promise<void>;
+  approveRole(roleId: string, versionId: string): Promise<void>;
+  withdrawRole(roleId: string): Promise<void>;
+  saveFact(input: NewFact): Promise<void>;
+  approveFact(factId: string, versionId: string): Promise<void>;
+  withdrawFact(factId: string): Promise<void>;
+  saveSkill(skillId: string | null, canonical: string, aliases: Array<{ alias: string; approved: boolean }>): Promise<void>;
+  linkSkill(skillId: string, fact: FactRef, usage: UsageInterval[], attestedMonths: number | null): Promise<void>;
+  unlinkSkill(skillId: string, factId: string, factVersionId: string): Promise<void>;
+  applyRepair(repair: RepairAction): Promise<void>;
+
+  createPosting(input: NewPosting): Promise<{ postingId: string; applicationId: string }>;
+  saveRequirements(postingVersionId: string, expectedRevision: number, edits: RequirementEdit[]): Promise<void>;
+  confirmEvidence(
+    postingVersionId: string,
+    expectedMappingRevision: number,
+    requirementId: string,
+    decision: EvidenceDecision | null,
+  ): Promise<void>;
+  refreshProposals(postingVersionId: string): Promise<void>;
+
+  savePacketRevision(applicationId: string, packetId: string | null, expectedRevision: number | null, lines: PacketLine[]): Promise<PacketRevision>;
+  approvePacket(packetId: string, revision: number, expectedRenderedSha256: string | null, requestId: string): Promise<ApproveResult>;
+
+  addReply(applicationId: string, body: string): Promise<Reply>;
+  applyStageChange(request: StageChangeRequest): Promise<StageChangeResult>;
+  saveNotes(applicationId: string, notes: string): Promise<void>;
 }

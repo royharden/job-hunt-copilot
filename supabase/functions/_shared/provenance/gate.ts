@@ -292,10 +292,12 @@ export interface GateResult {
 
 // Health of the selected graph (PLAN sections 5-7): a line whose own fact version, or whose role header's
 // role, has a health problem (bad span, wrong-kind or dangling role, withdrawn role, bad dates) is blocked.
-function healthFindings(line: PacketLine, report: ReturnType<typeof validateProfile>): Finding[] {
+function healthFindings(line: PacketLine, profile: Profile, report: ReturnType<typeof validateProfile>): Finding[] {
+  // A fact line is also blocked by a problem on the exact role version it cites (for example bad dates).
+  const roleVersionId = line.kind === "fact" ? findFactVersion(profile, line.fact)?.roleRef?.roleVersionId : undefined;
   const ids =
     line.kind === "fact"
-      ? blockingProblems(report, [line.fact])
+      ? blockingProblems(report, [line.fact], roleVersionId ? [roleVersionId] : [])
       : line.role
         ? blockingProblems(report, [], [line.role.roleId, line.role.roleVersionId])
         : [];
@@ -306,7 +308,7 @@ export function gatePacket(revision: Pick<PacketRevision, "lines">, context: Gat
   const report = validateProfile(context.profile);
   const lines = revision.lines.map((line) => {
     const rendered = renderLine(line, context);
-    const health = healthFindings(line, report);
+    const health = healthFindings(line, context.profile, report);
     if (health.length === 0 || rendered.grade !== "verified") return rendered;
     return { ...rendered, text: "", grade: "blocked" as const, findings: health, fallback: null };
   });
