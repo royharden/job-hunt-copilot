@@ -64,7 +64,9 @@ export function macroF1(
 // Reply evaluation (PLAN section 12). Rates are null when their denominator is zero (reported as "n/a").
 export interface ReplyClassMetric {
   label: string;
-  support: number;
+  truePositive: number;
+  predicted: number; // precision denominator
+  support: number; // recall denominator
   precision: number | null;
   recall: number | null;
 }
@@ -88,6 +90,8 @@ export function replyMetrics(
     const support = cases.filter((item) => item.expected === label).length;
     return {
       label,
+      truePositive,
+      predicted,
       support,
       precision: predicted === 0 ? null : truePositive / predicted,
       recall: support === 0 ? null : truePositive / support,

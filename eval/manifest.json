@@ -1,0 +1,40 @@
+{
+  "edition": 1,
+  "frozen": "2026-10-24",
+  "seed": "s15-pilot-edition-1",
+  "split": "deterministic 70/30 dev/heldout within each class, ordered by sha256(seed + case id)",
+  "origin": "authored-synthetic; no real resumes, postings or replies",
+  "status": "not yet run",
+  "files": {
+    "eval/guard-cases.ts": {
+      "cases": 60,
+      "supported": 30,
+      "adversarial": 30,
+      "sha256": "86a2fe279c5518b796a336518bfc7d6c0b58a4c98748dbb76e1dd7026d974afe"
+    },
+    "eval/reply-cases.ts": {
+      "cases": 60,
+      "perLabel": 10,
+      "labels": [
+        "rejection",
+        "interview",
+        "offer",
+        "acknowledgement",
+        "not_applicable",
+        "unknown"
+      ],
+      "sha256": "ac78d9e3aaf18172f9bf088f667e7278bd335252bb1595ede74b0adf60103856"
+    },
+    "supabase/functions/_shared/provenance/fixtures.ts": {
+      "role": "synthetic profile the guard cases cite",
+      "sha256": "828ce930eb47bb815a308a190a9ca0d6223b3efec6aab7cfda6310045a779ef4"
+    },
+    "tests/helpers.ts": {
+      "role": "repairedProfile() used by the guard runner",
+      "sha256": "f92be9e7fb80be87966d6f715c0164ec0e7f7688c153da295558a25d12f112fe"
+    }
+  },
+  "note": "Re-frozen 2026-10-24 before any execution (edition 1 has never run). Hashes are sha256 of the LF-normalized working-file bytes; after commit they also equal the git blob content. Any change to a case or the fixture profile after the first run requires a new edition.",
+  "labelConvention": "expectedLabel = what the current, unquoted, unsigned message itself says; quoted-only, signature-only, negated and vague outcome hints are unknown; courtesy receipts stay acknowledgement (review expected); other-company messages keep their content label with expectReview=true; expectReview follows PLAN section 8 only, never the classifier's rule tiers; job alerts and newsletters expect no review",
+  "macroF1": "average over labels with cases in the split; precision 0 for a label with support but no predictions"
+}
