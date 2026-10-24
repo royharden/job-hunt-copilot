@@ -69,19 +69,23 @@ const STOPWORDS = new Set([
   "proficient",
 ]);
 
-const NUMBER_RE =
-  /(?<![\p{L}])\$?\d{1,3}(?:,\d{3})+(?:\.\d+)?%?(?![\p{L}])|(?<![\p{L}])\$?\d+(?:\.\d+)?%?(?![\p{L}])/gu;
-
-export interface NumericToken {
-  raw: string;
-  core: string;
-}
+// Short technology names that the length filter would otherwise drop. Matched case-sensitively on the
+// original token so the English words "go", "c" or "r" are not mistaken for skills.
+const SHORT_TECH = new Set(["C", "R", "Go", "AI", "ML", "UI", "UX", "QA", "C#", "C++", "F#", "JS", "TS", "BI"]);
 
 export function significantTokens(text: string): string[] {
   const parts = text.match(/[\p{L}\p{N}][\p{L}\p{N}.+#-]*/gu) ?? [];
   const out: string[] = [];
   for (const part of parts) {
-    const token = part.toLowerCase().replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}.+#]+$/gu, "");
+    const original = part.replace(/[.,-]+$/u, "");
+    if (SHORT_TECH.has(original)) {
+      out.push(original.toLowerCase());
+      continue;
+    }
+    const token = part
+      .toLowerCase()
+      .replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}.+#]+$/gu, "")
+      .replace(/\.+$/u, "");
     if (token.length <= 2 || STOPWORDS.has(token) || /^\d+(?:\.\d+)?$/.test(token)) {
       continue;
     }
@@ -90,21 +94,10 @@ export function significantTokens(text: string): string[] {
   return out;
 }
 
-export function numericTokens(text: string): NumericToken[] {
-  const found: NumericToken[] = [];
-  const re = new RegExp(NUMBER_RE.source, NUMBER_RE.flags);
-  for (const match of text.matchAll(re)) {
-    const raw = match[0];
-    found.push({ raw, core: digitCore(raw) });
-  }
-  return found;
-}
-
-export function digitCore(raw: string): string {
-  const stripped = raw.replace(/[$,%]/g, "").replace(/,/g, "");
-  const [whole, frac = ""] = stripped.split(".");
-  const trimmedFrac = frac.replace(/0+$/, "");
-  return trimmedFrac.length > 0 ? `${whole}.${trimmedFrac}` : whole;
+// Documented normalization for "exact approved statement": collapse whitespace runs to one space and trim.
+// Nothing else (case, punctuation, quotes) is normalized.
+export function normalizeWhitespace(text: string): string {
+  return text.replace(/\s+/gu, " ").trim();
 }
 
 export function containsPhrase(haystack: string, phrase: string): boolean {

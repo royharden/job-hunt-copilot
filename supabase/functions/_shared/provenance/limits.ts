@@ -1,25 +1,26 @@
 export const LIMITS = {
+  sourceChars: 30_000,
   postingChars: 20_000,
-  promptPostingChars: 12_000,
-  factTextChars: 2_000,
-  factSurfaceChars: 200,
-  factSurfaceMin: 2,
-  emailChars: 20_000,
+  replyChars: 20_000,
+  factTextChars: 500,
   factsPerUser: 200,
+  rolesPerUser: 60,
+  skillsPerUser: 200,
+  aliasesPerSkill: 12,
+  aliasChars: 60,
   requirementsPerPosting: 40,
-  bulletsPerDraft: 8,
-  coverLinesPerDraft: 6,
-  modelBullets: 12,
-  modelCoverLines: 6,
-  bulletChars: 500,
-  headingChars: 80,
-  factIdsPerLine: 8,
-  modelDraftsPerUtcDay: 20,
-  modelTimeoutMs: 25_000,
+  requirementChars: 300,
+  packetLines: 40,
+  lineChars: 500,
+  notesChars: 4_000,
+  titleChars: 200,
 } as const;
 
-export const REVIEW_THRESHOLD = 0.85;
+// Server/config-owned versions bound into every approval. Bump when rules change so old approvals go stale.
+export const GUARD_VERSION = "guard-v1";
+export const TEMPLATE_VERSION = "templates-v1";
+export const REPLY_RULES_VERSION = "reply-rules-v1";
 
-export const MODEL_ID = "grok-4.7";
-
-export const MODEL_URL = "https://api.x.ai/v1/responses";
+// Proposal heuristic only (PLAN section 6). Not proof of support.
+export const LEXICAL_JACCARD = 0.34;
+export const LEXICAL_MIN_SHARED = 2;

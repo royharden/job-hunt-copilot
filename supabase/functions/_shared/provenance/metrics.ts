@@ -60,3 +60,69 @@ export function macroF1(
   }
   return counted === 0 ? null : sum / counted;
 }
+
+// Reply evaluation (PLAN section 12). Rates are null when their denominator is zero (reported as "n/a").
+export interface ReplyClassMetric {
+  label: string;
+  support: number;
+  precision: number | null;
+  recall: number | null;
+}
+
+export interface ReplyMetrics {
+  total: number;
+  perClass: ReplyClassMetric[];
+  macroF1: number | null;
+  reviewRate: number | null;
+  nonReviewCount: number;
+  nonReviewAccuracy: number | null;
+}
+
+export function replyMetrics(
+  cases: Array<{ expected: string; predicted: string; needsReview: boolean }>,
+  labels: string[],
+): ReplyMetrics {
+  const perClass = labels.map((label) => {
+    const truePositive = cases.filter((item) => item.predicted === label && item.expected === label).length;
+    const predicted = cases.filter((item) => item.predicted === label).length;
+    const support = cases.filter((item) => item.expected === label).length;
+    return {
+      label,
+      support,
+      precision: predicted === 0 ? null : truePositive / predicted,
+      recall: support === 0 ? null : truePositive / support,
+    };
+  });
+  const nonReview = cases.filter((item) => !item.needsReview);
+  return {
+    total: cases.length,
+    perClass,
+    macroF1: macroF1(cases, labels),
+    reviewRate: cases.length === 0 ? null : (cases.length - nonReview.length) / cases.length,
+    nonReviewCount: nonReview.length,
+    nonReviewAccuracy: nonReview.length === 0 ? null : nonReview.filter((item) => item.expected === item.predicted).length / nonReview.length,
+  };
+}
+
+// Guard aggregate: original rejection and accepted replacement are reported separately.
+export interface GuardAggregate {
+  unsupportedTotal: number;
+  unsupportedBlocked: number;
+  supportedTotal: number;
+  supportedBlocked: number;
+  recoveryOffered: number;
+  confusion: GateScore;
+}
+
+export function guardAggregate(
+  cases: Array<{ expectedBlock: boolean; blocked: boolean; recoveryOffered: boolean }>,
+): GuardAggregate {
+  return {
+    unsupportedTotal: cases.filter((item) => item.expectedBlock).length,
+    unsupportedBlocked: cases.filter((item) => item.expectedBlock && item.blocked).length,
+    supportedTotal: cases.filter((item) => !item.expectedBlock).length,
+    supportedBlocked: cases.filter((item) => !item.expectedBlock && item.blocked).length,
+    recoveryOffered: cases.filter((item) => item.blocked && item.recoveryOffered).length,
+    confusion: gateScores(cases),
+  };
+}

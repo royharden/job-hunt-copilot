@@ -1,76 +1,62 @@
 import { describe, expect, it } from "vitest";
-import {
-  statusAfterApproval,
-  statusAfterConfirmedReply,
-} from "../supabase/functions/_shared/provenance/board.ts";
 import { classifyReply } from "../supabase/functions/_shared/provenance/classify.ts";
-import { SAMPLE_EMAILS } from "../supabase/functions/_shared/provenance/fixtures.ts";
-import { gateScores, macroF1 } from "../supabase/functions/_shared/provenance/metrics.ts";
-import { containsPhrase, numericTokens } from "../supabase/functions/_shared/provenance/normalize.ts";
+import { SAMPLE_REPLIES } from "../supabase/functions/_shared/provenance/fixtures.ts";
 
-describe("reply classifier", () => {
-  it("labels the synthetic emails and holds weak or mixed notes for review", () => {
-    for (const email of SAMPLE_EMAILS) {
-      const result = classifyReply(email.text);
-      expect(result.label, email.name).toBe(email.label);
-      expect(result.needsReview, email.name).toBe(email.needsReview);
-    }
-    expect(classifyReply("").needsReview).toBe(true);
-    expect(classifyReply(SAMPLE_EMAILS[0].text).confidence).toBe(0.92);
-    expect(classifyReply(SAMPLE_EMAILS[6].text).confidence).toBe(0.45);
-    expect(classifyReply(SAMPLE_EMAILS[7].text).confidence).toBe(0.72);
+const context = { organisation: "Northwind Traders", title: "Senior Frontend Engineer" };
+
+describe("reply rules", () => {
+  it("confirms a clear rejection that names the application as strong rule evidence", () => {
+    const result = classifyReply(SAMPLE_REPLIES.rejection, context);
+    expect(result.label).toBe("rejection");
+    expect(result.strength).toBe("strong");
+    expect(result.needsReview).toBe(false);
+    expect(result.hits.some((hit) => hit.ruleId === "rej.not_moving_forward" && hit.ignored === null)).toBe(true);
+    const span = result.hits.find((hit) => hit.ruleId === "rej.not_moving_forward")!;
+    expect(SAMPLE_REPLIES.rejection.slice(span.start, span.end)).toBe(span.text);
+    // the courtesy "Thank you for applying" does not compete with the outcome
+    expect(result.hits.find((hit) => hit.label === "acknowledgement")?.ignored).toBe("courtesy");
   });
 
-  it("does not count the short interview word inside a longer phrase twice", () => {
-    const result = classifyReply("We invite you to interview next week.");
-    expect(result.label).toBe("interview");
-    expect(result.confidence).toBe(0.92);
-    expect(result.hits).toEqual(["invite you to interview"]);
-  });
-});
-
-describe("board transitions", () => {
-  it("lets a person confirm a status without moving a withdrawn or rejected card backward", () => {
-    expect(statusAfterApproval("draft")).toBe("approved");
-    expect(statusAfterApproval("interview")).toBe("interview");
-    expect(statusAfterConfirmedReply("withdrawn", "rejected")).toBe("withdrawn");
-    expect(statusAfterConfirmedReply("offer", "rejected")).toBe("rejected");
-    expect(statusAfterConfirmedReply("rejected", "interview")).toBe("rejected");
-    expect(statusAfterConfirmedReply("offer", "interview")).toBe("offer");
-    expect(statusAfterConfirmedReply("interview", "acknowledgement")).toBe("interview");
-    expect(statusAfterConfirmedReply("draft", "acknowledgement")).toBe("applied");
-    expect(statusAfterConfirmedReply("approved", "not_applicable")).toBe("approved");
-  });
-});
-
-describe("metric helpers", () => {
-  it("computes block rates and macro-F1 from counted cells", () => {
-    const actual = gateScores([
-      { expectedBlock: true, blocked: true },
-      { expectedBlock: true, blocked: true },
-      { expectedBlock: false, blocked: false },
-      { expectedBlock: false, blocked: true },
-    ]);
-    expect(actual.truePositive).toBe(2);
-    expect(actual.falsePositive).toBe(1);
-    expect(actual.falseNegative).toBe(0);
-    expect(actual.trueNegative).toBe(1);
-    expect(actual.blockRate).toBe(1);
-    expect(actual.falseBlockRate).toBe(0.5);
-    expect(actual.precision).toBeCloseTo(2 / 3);
-    expect(actual.recall).toBe(1);
-    expect(macroF1(
-      [
-        { expected: "A", predicted: "A" },
-        { expected: "B", predicted: "A" },
-      ],
-      ["A", "B"],
-    )).toBeCloseTo(1 / 3);
+  it("keeps a vague reply in review", () => {
+    const result = classifyReply(SAMPLE_REPLIES.vague, context);
+    expect(result.label).toBe("acknowledgement");
+    expect(result.needsReview).toBe(true);
+    expect(result.strength).toBe("weak");
   });
 
-  it("does not treat a letter-glued digit or a prefix as its own claim", () => {
-    expect(numericTokens("p95 latency by 12%")).toEqual([{ raw: "12%", core: "12" }]);
-    expect(containsPhrase("JavaScript services", "Java")).toBe(false);
-    expect(containsPhrase("Built internal Python services.", "Python services")).toBe(true);
+  // what_bug_this_catches: an offer quoted from earlier mail being read as a new offer.
+  it("ignores phrases inside quoted mail", () => {
+    const result = classifyReply(SAMPLE_REPLIES.quoted, context);
+    expect(result.label).toBe("unknown");
+    expect(result.needsReview).toBe(true);
+    expect(result.hits.every((hit) => hit.ignored === "quoted")).toBe(true);
+  });
+
+  it("abstains on negation, contrast, missing context and the wrong organisation", () => {
+    expect(classifyReply("To be clear, this is not an offer for the Senior Frontend Engineer role.", context).needsReview).toBe(true);
+    const contrast = classifyReply(
+      "Northwind Traders will not be moving forward with this role, but we would like to schedule a call about another.",
+      context,
+    );
+    expect(contrast.needsReview).toBe(true);
+    expect(contrast.reasons.join(" ")).toMatch(/Conflicting labels/);
+    expect(classifyReply(SAMPLE_REPLIES.rejection, null).needsReview).toBe(true);
+    const otherCompany = classifyReply("Thank you for applying to Contoso. We will not be moving forward.", context);
+    expect(otherCompany.label).toBe("rejection");
+    expect(otherCompany.needsReview).toBe(true);
+  });
+
+  it("covers every label", () => {
+    expect(classifyReply("We would like to invite you to interview for the Senior Frontend Engineer role.", context).label).toBe("interview");
+    expect(classifyReply("Northwind Traders is pleased to offer you the position.", context).label).toBe("offer");
+    expect(classifyReply("We have received your application to Northwind Traders.", context).label).toBe("acknowledgement");
+    expect(classifyReply("Click here to unsubscribe from this newsletter.", context).label).toBe("not_applicable");
+    expect(classifyReply("Lovely weather today.", context).label).toBe("unknown");
+    expect(classifyReply("", context).strength).toBe("none");
+  });
+
+  it("ignores phrases in the signature block", () => {
+    const result = classifyReply("Quick question about your availability for Northwind Traders.\n--\nRecruiting | interview scheduling team", context);
+    expect(result.hits.every((hit) => hit.ignored === "signature")).toBe(true);
   });
 });
