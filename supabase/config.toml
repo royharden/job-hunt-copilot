@@ -1,0 +1,4 @@
+project_id = "job-hunt-copilot"
+
+[functions.draft-materials]
+verify_jwt = true
