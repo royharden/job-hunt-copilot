@@ -10,6 +10,7 @@ import { PostingScreen } from "./ui/PostingScreen.tsx";
 import { ProfileScreen } from "./ui/ProfileScreen.tsx";
 import { ResultsScreen } from "./ui/ResultsScreen.tsx";
 import { SetupScreen } from "./ui/SetupScreen.tsx";
+import { RecoveryScreen } from "./ui/RecoveryScreen.tsx";
 
 export type View = "profile" | "postings" | "board" | "results";
 
@@ -48,6 +49,8 @@ export function App() {
   const [demoStatus, setDemoStatus] = useState<DemoStorageStatus>(() => demoStorageStatus());
   const [selectedApplicationId, setSelectedApplicationId] = useState<string | null>(null);
   const [confirmReset, setConfirmReset] = useState(false);
+  const [recovery, setRecovery] = useState(false);
+  const recovering = useRef(false);
   // Once the person explicitly chooses the demo, a leftover auth session must not replace it. The choice is
   // remembered for this tab only (sessionStorage), so a reload stays in the demo.
   const preferDemo = useRef(readDemoChoice());
@@ -76,7 +79,7 @@ export function App() {
 
   const applySession = useCallback(
     (session: Session | null) => {
-      if (preferDemo.current || !client) return;
+      if (preferDemo.current || recovering.current || !client) return;
       if (!session) {
         activate(null);
         return;
@@ -95,7 +98,18 @@ export function App() {
     void client.auth.getSession().then(({ data }) => {
       if (active) applySession(data.session);
     });
-    const { data } = client.auth.onAuthStateChange((_event, session) => applySession(session));
+    const { data } = client.auth.onAuthStateChange((event, session) => {
+      if (preferDemo.current) return;
+      if (event === "PASSWORD_RECOVERY" && session) {
+        recovering.current = true;
+        setRecovery(true);
+        activate(null);
+      } else if (event === "SIGNED_OUT") {
+        recovering.current = false;
+        setRecovery(false);
+        activate(null);
+      } else applySession(session);
+    });
     return () => {
       active = false;
       data.subscription.unsubscribe();
@@ -135,6 +149,16 @@ export function App() {
     setSelectedApplicationId(null);
     setView("profile");
     setDemoStatus(demoStorageStatus());
+  }
+
+  if (recovery && client) {
+    return <RecoveryScreen client={client} onDone={async () => {
+      const result = await client.auth.signOut();
+      if (result.error) throw result.error;
+      recovering.current = false;
+      setRecovery(false);
+      activate(null);
+    }} />;
   }
 
   if (!repo || !workspace) {
