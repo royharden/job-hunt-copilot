@@ -1,20 +1,23 @@
 import { CAPABILITIES } from "../demo/capabilities.ts";
+import pilotReport from "../../results/results.md?raw";
 
-// Journey step 8: results stay "not yet measured" until a recorded evaluation run exists. No rate is shown from
-// fixtures that have not been executed.
+// The recorded report is the single source for displayed measurements and limitations.
 export function ResultsScreen(props: { mode: "demo" | "remote" }) {
   return (
     <div className="stack">
       <section className="panel stack" aria-labelledby="results-heading">
         <h2 id="results-heading">Results</h2>
         <p className="notice">
-          Not yet measured. The guard and reply-rule pilot sets are authored but have not been run, so there are no accuracy, block or
-          review rates to report. Coverage percentages elsewhere are arithmetic over your confirmations, not measured quality.
+          Synthetic pilot edition 1 was run locally on 2026-10-26: 60 guard proposals and 60 replies.
+          These small synthetic sets do not establish general accuracy. Coverage elsewhere is arithmetic over your confirmations.
         </p>
         <p className="muted">
-          When an authorized run records output in results/results.md, this page should show its counts, denominators and edition. It never
-          shows rates for categories that were not run.
+          The report below records the tested revision, denominators, separate development and heldout results, and residual failures.
         </p>
+        <details>
+          <summary>Recorded pilot results and limitations</summary>
+          <pre style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{pilotReport}</pre>
+        </details>
       </section>
       <section className="panel stack" aria-labelledby="caps-heading">
         <h2 id="caps-heading">What runs where</h2>

@@ -4,10 +4,11 @@ A private, paste-only assistant for one person's job search. You keep approved c
 job posting, review its requirements, confirm which of your statements supports each one, assemble an
 evidence-linked application packet, approve and copy it, and record your own application progress.
 
-**Status: source built under a construction-only phase. No product runtime checks have been run** (only static syntax/type checks). No dependency install,
-unit test, typecheck with real library types, build, browser session, database migration, edge-function
-deploy or evaluation has been executed. See `DEVELOPMENT-STATUS.md` for exactly what was checked and what
-was not, and `docs/LIMITATIONS.md` for what the product does not do.
+**Status: local Full-mode validation in progress (2026-10-26).** Pinned install, real-library typecheck,
+49 unit tests, production build, the frozen synthetic pilot, migration on disposable PostgreSQL, and
+the SQL authority script have passed. The approval edge function passes Deno typecheck. Independent
+browser/handler/transaction acceptance is pending. Hosted auth and deployment have not been exercised.
+See `DEVELOPMENT-STATUS.md` and `docs/LIMITATIONS.md` for boundaries and remaining checks.
 
 ## What it does
 
@@ -52,24 +53,25 @@ teams or hiring predictions.
 |---|---|
 | `supabase/functions/_shared/provenance/` | Pure TypeScript core shared by browser, Deno handler and tests |
 | `src/` | React 18 + Vite app: `App.tsx`, `ui/` screens, `lib/` adapters (demo and remote), `demo/capabilities.ts` |
-| `supabase/migrations/` | Ordered PostgreSQL schema, RLS, RPCs (never applied) |
+| `supabase/migrations/` | Ordered PostgreSQL schema, RLS, RPCs (applied locally to disposable PostgreSQL; hosting pending) |
 | `supabase/functions/draft-approve/` | Authenticated approval/export function (never deployed) |
-| `tests/` | Vitest unit tests (authored, never run) |
-| `supabase/tests/` | Authored SQL authority/race checks for an isolated database (never run) |
-| `eval/`, `scripts/eval.ts`, `results/` | Frozen synthetic pilot and runner; results "not yet measured" |
+| `tests/` | Vitest unit tests (49 original tests passed locally) |
+| `supabase/tests/` | SQL authority checks passed on disposable PostgreSQL with synthetic auth roles |
+| `eval/`, `scripts/eval.ts`, `results/` | Frozen synthetic pilot edition 1, runner and measured local results |
 | `legacy/m6-grok/` | Archived, unwired model-drafting code from an earlier build (optional M6, not in the MVP) |
 
-## Running it (not yet done)
+## Running it locally
 
 ```powershell
-npm install        # first install creates package-lock.json; commit it, then use npm ci
+npm ci --ignore-scripts --no-audit --no-fund
 npm test
 npm run typecheck
 npm run eval      # Node 22.6+ (or npx vite-node scripts/eval.ts)
-npm run dev        # with no env vars: Setup screen -> Start demo
+npm run dev -- --host 127.0.0.1   # with no env vars: Setup screen -> Start demo
 ```
 
-Password recovery currently stops after the email link signs you in; there is no set-new-password screen yet.
+Password recovery opens a new-password form on the auth recovery event, then requires signing out before
+normal sign-in. The hosted email/redirect round trip remains unverified and needs platform configuration.
 
 For a live workspace, copy `.env.example` to `.env.local` and set only `VITE_SUPABASE_URL` and
 `VITE_SUPABASE_ANON_KEY` (public values). Server credentials are injected by the hosting platform into the
