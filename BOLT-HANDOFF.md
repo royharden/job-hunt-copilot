@@ -1,28 +1,30 @@
 # Bolt infrastructure handoff: Job Hunt Copilot
 
-Dirty Mode construction - runtime unverified. Nothing below has been provisioned, applied, deployed or run.
+Full-mode local validation in progress (2026-10-26). Install/typecheck/build/original tests, frozen
+evaluation, disposable PostgreSQL migration/authority suite and Deno check passed. Independent runtime
+acceptance is pending. No hosted infrastructure has been provisioned or deployed.
 
 ## Target and readiness
 
 - Repository / branch / revision: local git repo `job-hunt-copilot`, branch `main` (record the pushed commit here at import time); no remote yet; not pushed or published.
 - App root: repository root.
 - Database: Bolt Database (Supabase-compatible). Preserve an existing connected provider if one is found at activation.
-- Target: fresh empty database expected. No migration has ever been applied anywhere.
-- Existing baseline / applied migrations: none known; verify the target is empty before applying.
+- Target: fresh empty hosted database expected. Migration applied only to disposable local PostgreSQL.
+- Existing hosted baseline / applied migrations: none known; verify intended target history before applying.
 - Hosting: Bolt hosting (not chosen yet).
 - Publication: prepare only. Do not publish without the owner's explicit authorization.
 - Bolt action: inspect and prepare only, until the owner authorizes provisioning.
-- Status: source complete for the keyless MVP (M1-M5), runtime unverified; infrastructure pending; no runtime receipts. Static checks actually run are listed in `DEVELOPMENT-STATUS.md`.
+- Status: keyless MVP (M1-M5) under Full-mode local validation; hosted infrastructure pending. Actual checks and remaining gaps are in `DEVELOPMENT-STATUS.md`.
 - Owner prerequisites: GitHub access to the repo once pushed; Bolt Database creation; auth settings below.
 
 ## Build and connection
 
 | Item | Exact command or configuration name |
 |---|---|
-| Runtime / package manager | Node 24 used for static checks; Node 20+ expected for install/build/test; `npm run eval` needs Node 22.6+ (`--experimental-strip-types`), or on Node 20 use `npx vite-node scripts/eval.ts` after install; npm; no lockfile yet |
-| Frozen install / dev | first `npm install` (commit the lockfile), then `npm ci`; `npm run dev` |
+| Runtime / package manager | Verified Node v24.18.0 / npm 11.11.0; committed package-lock.json; `npm run eval` requires Node 22.6+ |
+| Frozen install / dev | `npm ci --ignore-scripts --no-audit --no-fund`; `npm run dev -- --host 127.0.0.1 --port <reserved-port> --strictPort` |
 | Build / output | `npm run build` (`tsc --noEmit && vite build`); output `dist/` |
-| Type/lint/tests | `npm run typecheck`, `npm test` (Vitest), `npm run eval`; none executed yet |
+| Type/lint/tests | `npm run typecheck`, `npm test` (49 original Vitest cases), `npm run eval` passed locally; no lint script |
 | Client file / public env names | `src/lib/supabase.ts`; `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` |
 | Missing config behavior | Setup screen with the explicit synthetic demo; no invented URL or key |
 
@@ -30,7 +32,7 @@ Dirty Mode construction - runtime unverified. Nothing below has been provisioned
 
 | Order | Exact migration file | Resources / dependencies | Applied status |
 |---|---|---|---|
-| 1 | `supabase/migrations/20261023190000_job_hunt_copilot.sql` | `pgcrypto`; 18 tables (profile versions, postings, requirement sets, evidence mappings/links, packet revisions/line facts/renderings, approvals, replies, stage events, request ledger, owner state); RLS on all; triggers bumping `owner_state.profile_revision`; RPCs listed below | pending (never applied) |
+| 1 | `supabase/migrations/20261023190000_job_hunt_copilot.sql` | `pgcrypto`; 18 tables (profile versions, postings, requirement sets, evidence mappings/links, packet revisions/line facts/renderings, approvals, replies, stage events, request ledger, owner state); RLS on all; triggers bumping `owner_state.profile_revision`; RPCs listed below | applied on disposable PostgreSQL 17.6 with synthetic auth roles; hosted pending |
 
 - Access model: private per user. Every table: RLS, owner-only SELECT for `authenticated`, nothing for `anon`.
 - Direct client writes: INSERT into `source_versions`, and draft-only INSERT into `role_versions` and `fact_versions` (status forced to draft); INSERT/UPDATE/DELETE on `skills` and `skill_evidence`. Column-level grants exclude owner/status/decision columns.
@@ -61,7 +63,7 @@ Platform credentials (`SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROL
 ## Auth, storage, and external steps
 
 - Auth: email + password sign-up, sign-in, sign-out, password recovery email.
-- Site URL and redirects: set after hosting. Password recovery is incomplete: the app sends the recovery email, but has no set-new-password step (no `PASSWORD_RECOVERY` handling or `updateUser` call), so a recovery link only signs the user in. Owner decision/next build item.
+- Site URL and redirects: set after hosting. The app handles `PASSWORD_RECOVERY`, updates the password and requires signout before normal sign-in. Real hosted email/redirect behavior remains unverified.
 - Buckets: not required. Realtime: not required. Scheduled jobs: not required.
 - Outside services: none. Explicit demo: browser-only synthetic demo (Setup -> Start demo).
 - Undecided by the owner: signup restrictions, account deletion and data retention policy.
@@ -70,10 +72,10 @@ Platform credentials (`SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROL
 
 | Check | Expected result | Outcome / receipt |
 |---|---|---|
-| Import/install/build | branch loads; `npm ci` and `npm run build` pass | pending |
-| Unit tests | `npm test` passes | pending |
-| SQL authority script | `supabase/tests/authority_checks.sql` on an isolated database: every check prints ok; transaction rolled back | pending |
-| Schema | migration applies on an empty database; tables, policies, RPCs, grants present | pending |
+| Import/install/build | branch loads; `npm ci` and `npm run build` pass | local install/build passed; RV frozen install pending; import not attempted |
+| Unit tests | `npm test` passes | 49 original tests passed; independent acceptance pending |
+| SQL authority script | `supabase/tests/authority_checks.sql` on an isolated database: every check prints ok; transaction rolled back | passed on disposable PostgreSQL 17.6 with synthetic auth roles |
+| Schema | migration applies on an empty database; tables, policies, RPCs, grants present | passed locally; actual hosted target pending |
 | Function round trip | approve a synthetic packet from the app; `approvals` row and stage event written | pending |
 | Auth/isolation | no-token and anon-bearer calls rejected; user B cannot read or write user A rows; direct INSERT/UPDATE on approvals, stage, events, replies' confirmation refused | pending |
 | Races | edit a statement/alias/mapping after preview -> approval refused as stale | pending |
@@ -94,7 +96,7 @@ Platform credentials (`SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROL
 ### Provision backend (only when the owner authorizes it)
 
 > Read BOLT-HANDOFF.md and use its **Bolt Database** target. The implemented code is listed there and the
-> local static check results are in DEVELOPMENT-STATUS.md (nothing was executed). Perform the missing infrastructure setup: create or reuse the specified
+> actual local checks and remaining gaps are in DEVELOPMENT-STATUS.md. Perform the missing infrastructure setup: create or reuse the specified
 > database, check its applied baseline, apply only pending committed migrations in order, deploy the
 > `draft-approve` function with `verify_jwt = true`, and configure email/password auth and public env
 > settings. Request missing secrets through server settings, never code or chat. Preserve the app and

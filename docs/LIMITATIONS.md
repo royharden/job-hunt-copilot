@@ -44,16 +44,19 @@ review; the evaluation pilot treats them the same way. There are no probabilitie
 
 ## Account recovery
 
-Sign-up, sign-in, sign-out and the recovery email exist. There is no set-new-password step yet, so a recovery
-link only signs the user in.
+Sign-up, sign-in, sign-out, recovery email and a new-password screen exist. Recovery updates the password
+and signs out before normal sign-in. Hosted email delivery, redirect settings and real account recovery
+have not been exercised in this keyless local run.
 
-## Database and server (unverified)
+## Database and server validation boundaries
 
-The migration, RPCs and `draft-approve` function are authored but have never run. In particular:
+The migration and original SQL authority suite passed on disposable PostgreSQL 17.6 with synthetic
+Supabase auth roles. The edge function passes Deno 2.5.6 typecheck. Hosted deployment, gateway/JWT
+configuration and real Auth are unverified. In particular:
 
 - requirement sets, evidence mappings and packet lines are stored as JSON arrays validated inside RPCs, with
   normalized link tables (`evidence_links`, `packet_line_facts`) whose composite foreign keys enforce
-  ownership; this has not been exercised;
+  ownership; original local SQL checks exercise owner isolation and selected foreign-parent paths;
 - Postgres does not re-run the TypeScript guard; the edge function runs it and a service-only function
   commits the result after re-checking current revisions, fact currency and a profile revision counter;
 - reply predictions are computed in the browser and stored as advisory data; only the user's confirmation
@@ -73,6 +76,7 @@ import are deferred.
 
 ## Evaluation
 
-The synthetic pilot (60 guard lines, 60 replies) is small, authored by the builder and has never been run.
-Results are "not yet measured". Even after a run, sparse categories support counts, not rates, and no
-competitor accuracy is implied.
+The synthetic pilot (60 guard lines, 60 replies) is small and authored by the builder. Frozen edition 1
+ran on 2026-10-26; results/results.md records commands, revision, denominators and residual failures.
+Its supplemental heuristic misses a dev added-tool case; MVP export requires exact verified rendering.
+Sparse categories support counts rather than general rate claims. No competitor accuracy is implied.
