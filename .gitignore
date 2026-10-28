@@ -8,3 +8,13 @@ coverage/
 *.local
 .DS_Store
 .agent-work/
+
+# Keep local credentials, archives, and generated agent data out of Git.
+.creds/
+ArchiveManager-creds.txt
+*.pem
+*.key
+*.p12
+*.pfx
+*.zip
+.agent-work/
