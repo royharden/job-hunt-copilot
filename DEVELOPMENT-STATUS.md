@@ -1,8 +1,24 @@
 # Development status
 
-Phase: **construction only (source written, runtime unverified).** Built 2026-10-23 to 2026-10-24 under a temporary
-construction mode that allowed static checks only. Every package was reviewed statically by a separate reviewer
-subagent and committed only after a passing review.
+Phase: **FULL-mode local validation in progress, 2026-10-26.** The 2026-10-23/24 construction baseline
+is reused. Current independent acceptance is pending; historical static review was not runtime acceptance.
+
+## Actual local runtime checks (2026-10-26)
+
+- Node v24.18.0, npm 11.11.0. Exact direct dependency versions and committed package-lock.json.
+- `npm install --ignore-scripts --no-audit --no-fund`: exit 0, 114 packages.
+- `npm test`: exit 0, 49 original tests in 9 files. Independent reviewer tests pending integration.
+- `npm run typecheck` and `npm run build`: exit 0 using real types. Build passed again after results/recovery changes.
+- `npm run eval`: exit 0, unchanged frozen edition 1; all four LF-normalized manifest hashes matched.
+  Full tables and limitations in results/results.md; no heldout tuning or provider calls.
+- Migration applied successfully on disposable PostgreSQL 17.6 with synthetic auth roles.
+- `supabase/tests/authority_checks.sql`: exit 0, full transaction rolled back. First harness run lacked
+  Supabase service-role table grants; corrected local shim, then reran the unchanged script.
+- Deno 2.5.6 `check --no-config supabase/functions/draft-approve/index.ts`: exit 0 with real pinned dependency types.
+- Local server starts on a claimed loopback port. Browser journey, isolated handler and concurrent SQL acceptance pending.
+
+Hosted platform Auth, gateway/JWT behavior, email/redirects and deployment remain unverified. No cloud provisioning,
+real credentials, live provider calls, push or publication occurred.
 
 ## Built
 
@@ -15,7 +31,7 @@ subagent and committed only after a passing review.
 | M5 Eval/docs | Pilot (60 + 60), runner with baselines, results placeholder, README, LIMITATIONS, this file, LICENSE, BOLT-HANDOFF |
 | M6 Optional model rewording | Not built (off by default; out of MVP scope). Older Grok model code is archived unwired in `legacy/m6-grok/` |
 
-## Checks that were actually run (last re-run 2026-10-24 on the final P6 working tree, Node v24.18.0)
+## Historical construction checks (2026-10-24, Node v24.18.0)
 
 - `node --experimental-strip-types --check` on every `.ts` file in the core, tests, eval, scripts, `src/lib`,
   `src/demo`, `_shared/http.ts`: pass. (Node cannot parse `.tsx`.)
@@ -25,19 +41,19 @@ subagent and committed only after a passing review.
   `@supabase/supabase-js`: no errors except two stub artifacts. Real library types were not available.
 - Same compiler over `supabase/functions/draft-approve/index.ts` with scratch Deno / esm.sh stubs: 0 errors.
 
-## Not run (deferred validation)
+## Remaining validation and owner steps
 
 | Area | Next step |
 |---|---|
-| Dependencies | first `npm install` (creates the lockfile), later `npm ci` |
-| Unit tests | `npm test` (49 authored Vitest cases; none executed; hand traces are not passes) and `supabase/tests/authority_checks.sql` (authored psql checks; never run) |
-| Typecheck/build | `npm run typecheck`, `npm run build` with real types |
+| Reproducible install | RV repeat `npm ci` against committed lockfile |
+| Unit tests | 49 existing tests passed; independent acceptance suite and combined-tree checks pending |
+| Typecheck/build | Passed with real types; rerun final combined tree after RV integration |
 | Demo journey | open the app, run PLAN section 8 steps 1-8 with keyboard and mouse |
-| Edge function | `deno check`; deploy; no-token and anon-bearer requests rejected; authenticated round trip |
-| Database | apply the migration to an isolated/fresh target; check grants, policies, constraints; two-user isolation; foreign-parent and wrong-posting inserts rejected; direct writes to approvals/stage/events refused |
+| Edge function | Deno check passed; isolated handler contract tests pending; hosted deployment/Auth deferred |
+| Database | Migration/original authority suite passed locally; independent concurrency/expanded authority pending; hosting deferred |
 | Approval races | edit a statement, alias, mapping or packet between read and commit -> stale; zero-line refusal; exact bytes |
 | Transactions | duplicate / stale / concurrent stage confirmations produce one event; rollback on failure |
 | Auth settings | Site URL, confirmation and recovery redirects, sign-out and expiry |
-| Account recovery | add a set-new-password step (`PASSWORD_RECOVERY` event + `auth.updateUser`); not built |
-| Evaluation | `npm run eval` (Node 22.6+) on frozen edition 1 (60 guard, 60 replies); record counts, denominators and commands in `results/results.md`; list residual semantic failures; expand sparse categories in a new edition before any broad claim |
+| Account recovery | Screen/event/updateUser implemented; mock regression acceptance and hosted round trip pending |
+| Evaluation | Edition 1 executed and recorded; independent verification pending; expand sparse categories in a new edition before broad claims |
 | Privacy | no diagnostic bodies in logs; demo isolation; deletion/retention policy decided |
